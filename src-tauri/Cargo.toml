@@ -1,6 +1,6 @@
 [package]
 name = "nref"
-version = "0.1.0"
+version = "0.1.1"
 description = "Searchable reference for Nostr event kinds and NIPs, read from local git checkouts"
 authors = ["xjmzx"]
 edition = "2021"
