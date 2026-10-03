@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=nref
+GenericName=Nostr Reference
+Comment=Searchable reference for Nostr event kinds and NIPs, read from local git checkouts (ndisc suite)
+Exec=@BINDIR@/nref
+Icon=@ICONDIR@/nref.svg
+Terminal=false
+Categories=Development;Documentation;
+Keywords=nostr;nip;kinds;reference;registry;ndisc;
+StartupNotify=true

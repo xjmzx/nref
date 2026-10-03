@@ -1,0 +1,158 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Theme palettes — channel triples consumed by tailwind.config.ts as
+   rgb(var(--c-x) / <alpha-value>). :root is the fizx.uk scheme (navy
+   base, emerald + violet accents); .theme-upleb swaps to the upleb.uk orange scheme and
+   .theme-mono (the default on launch) to greys; the wordmark cycles them.
+   Themes recolour chrome only — ok/warn/alert keep their colours everywhere.
+   Mirrors ndisc. */
+:root {
+  --c-bg: 9 13 18;
+  --c-panel: 13 17 23;
+  --c-surface: 19 29 42;
+  --c-surface-hover: 30 45 61;
+  --c-fg: 240 246 252;
+  --c-muted: 107 122 141;
+  --c-accent: 122 240 205;
+  --c-digital: 125 211 252;
+  --c-ok: 74 222 128;
+  --c-warn: 251 191 36;
+  --c-alert: 248 113 113;
+  --c-mauve: 167 139 250;
+  --c-auburn: 178 96 58;
+}
+
+.theme-upleb {
+  --c-bg: 10 15 21;
+  --c-panel: 13 17 23;
+  --c-surface: 22 32 45;
+  --c-surface-hover: 30 45 61;
+  --c-fg: 201 209 217;
+  --c-muted: 107 122 141;
+  --c-accent: 255 182 158;
+  --c-digital: 255 120 73;
+  --c-ok: 74 222 128;
+  --c-warn: 251 191 36;
+  --c-alert: 248 113 113;
+  --c-mauve: 255 179 71;
+  --c-auburn: 178 96 58;
+}
+
+.theme-mono {
+  --c-bg: 10 10 11;
+  --c-panel: 16 16 18;
+  --c-surface: 28 28 31;
+  --c-surface-hover: 44 44 48;
+  --c-fg: 240 240 243;
+  --c-muted: 122 122 128;
+  --c-accent: 232 232 236;
+  --c-mauve: 198 198 204;
+  --c-digital: 152 152 159;
+  --c-auburn: 150 150 156;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  @apply bg-bg text-fg font-sans antialiased;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+::selection {
+  @apply bg-surfaceHover text-fg;
+}
+
+/* Custom scrollbar — dark, slightly wider than WebKit's default, easier
+   to grab. Applies globally. */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgb(var(--c-surface-hover));
+  border-radius: 5px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgb(var(--c-muted));
+}
+
+/* The NIP reader. Hand-rolled rather than @tailwindcss/typography so every
+   colour stays a theme token. */
+.nip-doc {
+  @apply text-sm leading-relaxed text-fg/90;
+}
+.nip-doc > * + * {
+  @apply mt-3;
+}
+.nip-doc h1 {
+  @apply text-xl font-bold text-accent mt-0;
+}
+.nip-doc h2 {
+  @apply text-lg font-semibold text-fg mt-7 pb-1 border-b border-surface;
+}
+.nip-doc h3 {
+  @apply text-base font-semibold text-fg mt-6;
+}
+.nip-doc h4,
+.nip-doc h5,
+.nip-doc h6 {
+  @apply text-sm font-semibold text-mauve mt-5;
+}
+.nip-doc a {
+  @apply text-digital underline decoration-digital/40 underline-offset-2 cursor-pointer hover:decoration-digital;
+}
+.nip-doc a.nip-link {
+  @apply text-accent decoration-accent/40 hover:decoration-accent;
+}
+.nip-doc code {
+  @apply font-mono text-[0.85em] bg-surface rounded px-1 py-0.5;
+}
+.nip-doc pre {
+  @apply bg-panel border border-surface rounded-md p-3 overflow-x-auto text-xs leading-normal;
+}
+.nip-doc pre code {
+  @apply bg-transparent p-0 text-[1em];
+}
+.nip-doc ul {
+  @apply list-disc pl-5;
+}
+.nip-doc ol {
+  @apply list-decimal pl-5;
+}
+.nip-doc li + li {
+  @apply mt-1;
+}
+.nip-doc li > ul,
+.nip-doc li > ol {
+  @apply mt-1;
+}
+.nip-doc blockquote {
+  @apply border-l-2 border-mauve/50 pl-3 text-muted;
+}
+.nip-doc hr {
+  @apply border-surface my-6;
+}
+.nip-doc table {
+  @apply block overflow-x-auto text-xs border-collapse;
+}
+.nip-doc th {
+  @apply text-left font-semibold text-muted border-b border-surfaceHover px-2 py-1.5 whitespace-nowrap;
+}
+.nip-doc td {
+  @apply border-b border-surface px-2 py-1.5 align-top;
+}
+.nip-doc img {
+  @apply max-w-full;
+}
