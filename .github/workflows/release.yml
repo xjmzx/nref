@@ -1,0 +1,220 @@
+name: Release
+
+# Fires on any pushed tag starting with `v` (e.g. v0.1.0, v0.2.0-beta) and
+# can also be kicked off manually via the Actions tab. Publishes a GitHub
+# Release with a .deb for Linux x86_64 and a .dmg for macOS arm64.
+#
+# The jobs cannot share a runner — each build needs its own platform's
+# WebView — so the Linux job creates the release and owns its notes, and
+# every other job only appends its own asset to it.
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to publish (e.g. v0.1.0-beta)"
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  build-linux-x86_64:
+    name: Build Linux x86_64
+    runs-on: ubuntu-22.04
+    steps:
+      # Action versions below run on the Node 24 Actions runtime
+      # (checkout v6, setup-node v6, action-gh-release v3). GitHub
+      # deprecated the Node 20 action runtime in 2025.
+      - uses: actions/checkout@v6
+        with:
+          # Build the ref being released, not whatever the workflow ran from.
+          # A workflow_dispatch names the tag to publish, but checkout defaults
+          # to the branch the run was started on — so without this the build
+          # comes from main and its artifacts get uploaded to that tag's
+          # release, which then holds binaries the tag never contained. A tag
+          # push is unaffected: github.ref is already refs/tags/<tag>.
+          ref: ${{ github.event.inputs.tag || github.ref }}
+
+      # Standard Tauri Linux deps. nref has no audio, keyring or network needs
+      # of its own, so nothing beyond the webview stack is required.
+      - name: Install Tauri system deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            libxdo-dev \
+            build-essential \
+            curl wget file
+
+      # `node-version` is the Node used to run the project build (vite/tsc),
+      # independent of the action's own Node 24 runtime. Node 20 LTS is kept
+      # here deliberately — changing the build toolchain is a separate call.
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo target
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Install npm deps
+        run: npm ci
+
+      # .deb only. No rpm (rpmbuild isn't on ubuntu runners) and, since
+      # v0.4.0, no AppImage: it bundled its own webkit2gtk (80 MB against the
+      # .deb's 6 MB) for non-Debian distros nobody here runs. Other distros
+      # can build from source.
+      - name: Build Tauri bundle (.deb)
+        run: npm run tauri build -- --bundles deb
+
+      - name: Determine tag
+        id: tag
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "tag=${{ github.event.inputs.tag }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Publishes the release directly (not as a draft) so the assets land
+      # on the tagged release in one step — no duplicate-record cleanup later.
+      # The `prerelease` flag is auto-set from the tag: anything with a hyphen
+      # (v0.1.0-beta, v0.2.0-rc.1) is a pre-release; plain `vX.Y.Z` isn't.
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ steps.tag.outputs.tag }}
+          name: ${{ steps.tag.outputs.tag }}
+          prerelease: ${{ contains(steps.tag.outputs.tag, '-') }}
+          generate_release_notes: true
+          files: |
+            src-tauri/target/release/bundle/deb/*.deb
+
+  build-macos-arm64:
+    name: Build macOS (arm64)
+    # Runs after the Linux job so the release (and its notes) already exist;
+    # this job only appends the .dmg to it.
+    needs: build-linux-x86_64
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+
+      # No apt step here: WKWebView ships with the OS.
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo target
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Install npm deps
+        run: npm ci
+
+      # Unsigned and un-notarised, like the rest of the suite: Gatekeeper
+      # refuses the first launch until the app is opened from the context
+      # menu, or cleared with
+      # `xattr -dr com.apple.quarantine /Applications/nref.app`.
+      - name: Build Tauri bundle (.dmg)
+        run: npm run tauri build -- --bundles dmg
+
+      # Reuse the Linux job's tag logic verbatim.
+      - name: Determine tag
+        id: tag
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "tag=${{ github.event.inputs.tag }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Appends the .dmg to the release the Linux job already published. No
+      # `name`/`generate_release_notes` here — the Linux job owns those; this
+      # step only adds its asset so the two jobs don't clobber each other.
+      # `prerelease` is repeated so this update states the same flag the
+      # Linux job set, rather than leaving it to the action's default.
+      - name: Upload macOS bundle to release
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ steps.tag.outputs.tag }}
+          prerelease: ${{ contains(steps.tag.outputs.tag, '-') }}
+          files: |
+            src-tauri/target/release/bundle/dmg/*.dmg
+
+  build-windows-x86_64:
+    name: Build Windows x86_64
+    # Runs after the Linux job so the release (and its notes) already exist;
+    # this job only appends the Windows installer to it.
+    needs: build-linux-x86_64
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo target
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Install npm deps
+        run: npm ci
+
+      # Windows runners ship the MSVC build tools and WebView2 runtime, so
+      # there's no apt-get equivalent needed here. The NSIS toolset itself is
+      # downloaded automatically by the Tauri bundler on first run.
+      - name: Build Tauri bundle (NSIS installer)
+        run: npm run tauri build -- --bundles nsis
+
+      # Reuse the Linux job's tag logic. `shell: bash` is required because the
+      # default shell on windows runners is PowerShell, which can't parse the
+      # `${GITHUB_REF#refs/tags/}` bash expansion below.
+      - name: Determine tag
+        id: tag
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "tag=${{ github.event.inputs.tag }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
+          fi
+
+      # Appends the .exe to the release the Linux job already published. No
+      # `name`/`generate_release_notes` here — the Linux job owns those; this
+      # step only adds its asset so the two jobs don't clobber each other.
+      - name: Upload Windows installer to release
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ steps.tag.outputs.tag }}
+          prerelease: ${{ contains(steps.tag.outputs.tag, '-') }}
+          files: |
+            src-tauri/target/release/bundle/nsis/*-setup.exe
