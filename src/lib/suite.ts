@@ -1,7 +1,7 @@
 // The kinds the n-suite itself puts on the wire, so the reference can mark
 // them and show whether the public registry knows each one. Mirrors
-// ndisc/SUITE.md: the wire-contract table, the messaging paragraph under it
-// and the remote-signer section. That document is the authority; update this
+// ndisc/SUITE.md: the wire-contract table, the media and messaging paragraphs
+// under it and the remote-signer section. That document is the authority; update this
 // list when it changes.
 
 export interface SuiteUse {
@@ -19,6 +19,9 @@ export const SUITE_KINDS: Record<number, SuiteUse> = {
   4550: { role: "per-note sign-off (NIP-72)", apps: "ndisc" },
   7: { role: "reactions / ratings (NIP-25)", apps: "ndisc, ntree, nsmpl, nview publish · all read" },
   1063: { role: "clip.v1 — clip / sample file metadata (NIP-94)", apps: "ntree (clips), nsmpl (samples)" },
+  // Media, beside the spine (Blossom).
+  10063: { role: "Blossom server list (BUD-03)", apps: "ndisc publishes" },
+  24242: { role: "Blossom upload authorization — HTTP header, never sent to a relay", apps: "ndisc" },
   // Messaging, outside the spine.
   1059: { role: "NIP-17 gift wrap", apps: "nchat" },
   13: { role: "NIP-17 seal", apps: "nchat" },
