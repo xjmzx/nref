@@ -3,6 +3,18 @@
 No wire contract: nref reads the public NIPs and kind registry and publishes
 nothing.
 
+## 0.1.2 — 2026-11-24
+
+### Added — update check on the version chip
+
+The chip checks GitHub once a day for a newer published release (pre-release
+tags never count). When one exists, a dot appears on the chip's corner;
+clicking the chip opens a popover with the status, a link to the release page,
+**Check now**, and a **Check daily** switch to turn it off. Notify-only:
+nothing is downloaded or installed. Vendored from ndisc
+(`src/lib/updateCheck.ts`, `src/components/VersionChip.tsx`,
+`src/components/TickBox.tsx`); only `APP_REPO` differs.
+
 ## 0.1.1 — 2026-10-03
 
 - The n-suite kinds list now mirrors SUITE.md: adds 4550 (NIP-72 sign-off)

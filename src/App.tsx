@@ -4,9 +4,10 @@ import { getVersion } from "@tauri-apps/api/app";
 import { cn } from "./lib/cn";
 import { build, githubBase } from "./lib/data";
 import { load, pickPath, pull, type Loaded, type RepoState, type Which } from "./lib/tauri";
-import { ago, shortVersion, useStored, useToast } from "./lib/ui";
+import { ago, useStored, useToast } from "./lib/ui";
 import KindsView from "./KindsView";
 import NipsView from "./NipsView";
+import { VersionChip } from "./components/VersionChip";
 
 // nref has two sections over two git checkouts: Kinds (registry-of-kinds'
 // schema.yaml merged with the NIPs README table) and NIPs (the NN.md files,
@@ -159,11 +160,7 @@ export default function App() {
             <span className="text-accent">n</span>
             <span className="text-mauve">ref</span>
           </button>
-          {version && (
-            <span title={`v${version}`} className="hidden md:inline-flex bg-surface text-mauve font-mono text-xs px-1.5 py-0.5 rounded">
-              v{shortVersion(version)}
-            </span>
-          )}
+          {version && <VersionChip version={version} />}
         </div>
 
         <div className="min-w-0 overflow-hidden justify-start hidden lg:flex items-center gap-4 text-xs text-muted">
